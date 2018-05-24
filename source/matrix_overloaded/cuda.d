@@ -1,6 +1,7 @@
 module matrix_overloaded.cuda;
 
 import std.stdio;
+import core.stdc.stdlib;
 
 import cuda_d.cublas_api;
 import cuda_d.cublas_v2;
@@ -25,7 +26,11 @@ void gpu_blas_mmul(const double *A, const double *B, double *C, const int m, con
   cublasDestroy(handle);
 }
 
-void print_matrix(const double *A, int nr_rows_A, int nr_cols_A) {
+void print_matrix(const double *A, int nr_rows_A, int nr_cols_A){
+  writeln(A[0]);
+}
+
+void print_matrix2(const double *A, int nr_rows_A, int nr_cols_A) {
 
   for(int i = 0; i < nr_rows_A; ++i){
     for(int j = 0; j < nr_cols_A; ++j){
@@ -43,16 +48,13 @@ void call_gemm_routine(string display_flag, int size = 10){
   // for simplicity we are going to use square arrays
   nr_rows_A = nr_cols_A = nr_rows_B = nr_cols_B = nr_rows_C = nr_cols_C = size;
 
-  auto h_A = new double[nr_rows_A * nr_cols_A];
-  auto h_B = new double[nr_rows_B * nr_cols_B];
-  auto h_C = new double[nr_rows_C * nr_cols_C];
+  double* h_A = cast(double*)malloc(double.sizeof * nr_rows_A * nr_cols_A);
+  double* h_B = cast(double*)malloc(double.sizeof * nr_rows_B * nr_cols_B);
+  double* h_C = cast(double*)malloc(double.sizeof * nr_rows_C * nr_cols_C);
 
-  foreach(ref ele; h_A){
-	ele = 6;
-  }
-
-  foreach(ref ele; h_B){
-	ele = 6;
+  for(int i = 0; i < size * size; i++){
+	h_A[i]  = 6;
+	h_B[i]  = 6;
   }
   // Allocate 3 arrays on GPU
   double* d_A, d_B, d_C;
@@ -62,24 +64,24 @@ void call_gemm_routine(string display_flag, int size = 10){
 
 
   // Optionally we can copy the data back on CPU and print the arrays
-  cudaMemcpy(d_A, h_A.ptr,nr_rows_A * nr_cols_A * cast(int)double.sizeof, cudaMemcpyKind.cudaMemcpyHostToDevice);
-  cudaMemcpy(d_B, h_B.ptr,nr_rows_B * nr_cols_B * cast(int)double.sizeof, cudaMemcpyKind.cudaMemcpyHostToDevice);
+  cudaMemcpy(d_A, h_A, nr_rows_A * nr_cols_A * cast(int)double.sizeof, cudaMemcpyKind.cudaMemcpyHostToDevice);
+  cudaMemcpy(d_B, h_B, nr_rows_B * nr_cols_B * cast(int)double.sizeof, cudaMemcpyKind.cudaMemcpyHostToDevice);
 
   if(display_flag == "true"){
   	writeln( "A =");
-  	print_matrix(h_A.ptr, nr_rows_A, nr_cols_A);
+  	print_matrix(h_A, nr_rows_A, nr_cols_A);
   	writeln( "B =");
-  	print_matrix(h_B.ptr, nr_rows_B, nr_cols_B);
+  	print_matrix(h_B, nr_rows_B, nr_cols_B);
   }
 
   // Multiply A and B on GPU
   gpu_blas_mmul(d_A, d_B, d_C, nr_rows_A, nr_cols_A, nr_cols_B);
 
   // Copy (and print) the result on host memory
-  cudaMemcpy(h_C.ptr,d_C,nr_rows_C * nr_cols_C * cast(int)double.sizeof, cudaMemcpyKind.cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_C, d_C, nr_rows_C * nr_cols_C * cast(int)double.sizeof, cudaMemcpyKind.cudaMemcpyDeviceToHost);
   if(display_flag == "true"){
   	writeln( "C =" );
-  	print_matrix(h_C.ptr, nr_rows_C, nr_cols_C);
+  	print_matrix(h_C, nr_rows_C, nr_cols_C);
   }
 
   writeln("Success!");
